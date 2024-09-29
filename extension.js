@@ -256,28 +256,29 @@ vscode.workspace.onDidChangeTextDocument((event) => {
         return; // No selections for this file, so nothing to update
     }
 
-    // Update selection ranges and content based on document changes
+    // Iterate through the changes in the document
     event.contentChanges.forEach(change => {
         const startLine = change.range.start.line;
         const endLine = change.range.end.line;
         const lineDelta = change.text.split('\n').length - (endLine - startLine + 1);
 
-        // Adjust the selection ranges and update the content
+        // Update selections if there is a line number change
         selectionsJSON[filePath] = selectionsJSON[filePath].map(selection => {
-            // Shift ranges if they are after the change
+            // If selection is after the change, shift it by the delta
             if (selection.startLine > endLine) {
-                selection.startLine += lineDelta;
-                selection.endLine += lineDelta;
+                return {
+                    startLine: selection.startLine + lineDelta,
+                    endLine: selection.endLine + lineDelta
+                };
             }
 
-            // Adjust the end line if the change occurs within the selection
+            // If the selection overlaps with the change, adjust its boundaries
             if (selection.endLine >= startLine) {
-                selection.endLine += lineDelta;
+                return {
+                    startLine: selection.startLine,
+                    endLine: selection.endLine + lineDelta
+                };
             }
-
-            // Update the content of the selection
-            const selectedText = event.document.getText(new vscode.Range(selection.startLine, 0, selection.endLine, 9999));
-            selection.content = selectedText;
 
             return selection;
         });
@@ -290,36 +291,3 @@ vscode.workspace.onDidChangeTextDocument((event) => {
         updateHighlights(editor);
     }
 });
-
-// Modify the selectRangeCommand to store the content of the selected text in the JSON
-let selectRangeCommand = vscode.commands.registerCommand('extension.selectRange', () => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
-
-    const startLine = editor.selection.start.line;
-    const endLine = editor.selection.end.line;
-    const filePath = editor.document.fileName;
-
-    const overlapsExistingSelection = selectionsJSON[filePath]?.some(sel => {
-        return (startLine >= sel.startLine && startLine <= sel.endLine) ||
-               (endLine >= sel.startLine && endLine <= sel.endLine) ||
-               (startLine <= sel.startLine && endLine >= sel.endLine);
-    });
-
-    if (overlapsExistingSelection) {
-        vscode.window.showInformationMessage("This range or part of it is already selected.");
-        return;
-    }
-
-    if (!selectionsJSON[filePath]) {
-        selectionsJSON[filePath] = [];
-    }
-
-    // Get the selected text and store it along with the start and end line
-    const selectedText = editor.document.getText(new vscode.Range(startLine, 0, endLine, 9999));
-    selectionsJSON[filePath].push({ startLine, endLine, content: selectedText });
-    saveSelectionsToFile();
-    updateHighlights(editor);
-    selectionProvider.refresh();  // Refresh the tree view
-});
-
