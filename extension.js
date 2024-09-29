@@ -8,7 +8,6 @@ const jsonFilePath = path.join(__dirname, 'selections.json');
 const saveSelectionsToFile = () => {
     try {
         fs.writeFileSync(jsonFilePath, JSON.stringify(selectionsJSON, null, 2), 'utf8');
-        console.log(`JSON file updated at path: ${jsonFilePath}`);
     } catch (error) {
         console.error(`Failed to write JSON file: ${error.message}`);
     }
@@ -20,7 +19,6 @@ function activate(context) {
         selectionsJSON = JSON.parse(fileData);
     }
 
-    // Decoration for highlighted range (color: orange)
     let highlightDecorationType = vscode.window.createTextEditorDecorationType({
         backgroundColor: 'rgba(255,165,0,0.5)'
     });
@@ -29,7 +27,7 @@ function activate(context) {
         const filePath = editor.document.fileName;
         const selections = selectionsJSON[filePath];
         if (!selections || selections.length === 0) {
-            editor.setDecorations(highlightDecorationType, []); // Clear decorations
+            editor.setDecorations(highlightDecorationType, []);
             return;
         }
 
@@ -40,6 +38,20 @@ function activate(context) {
 
         editor.setDecorations(highlightDecorationType, decorationsArray);
     };
+
+    vscode.window.visibleTextEditors.forEach(editor => {
+        const filePath = editor.document.fileName;
+        if (selectionsJSON[filePath]) {
+            updateHighlights(editor);
+        }
+    });
+
+    vscode.workspace.onDidOpenTextDocument((doc) => {
+        const editor = vscode.window.visibleTextEditors.find(e => e.document === doc);
+        if (editor) {
+            updateHighlights(editor);
+        }
+    });
 
     let selectRangeCommand = vscode.commands.registerCommand('extension.selectRange', () => {
         const editor = vscode.window.activeTextEditor;
@@ -68,10 +80,8 @@ function activate(context) {
         selectionsJSON[filePath].push({ startLine, endLine, content: selectedText });
         saveSelectionsToFile();
         updateHighlights(editor);
-        selectionProvider.refresh();  // Refresh the tree view
     });
 
-    // Command: Unselect a range (even if partially selected)
     let unselectRangeCommand = vscode.commands.registerCommand('extension.unselectRange', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
@@ -81,23 +91,19 @@ function activate(context) {
         const filePath = editor.document.fileName;
 
         if (selectionsJSON[filePath]) {
-            // Unselect the entire range if the current selection overlaps with any existing range
             selectionsJSON[filePath] = selectionsJSON[filePath].filter(sel => {
-                return !(startLine <= sel.endLine && endLine >= sel.startLine); // Remove if overlapping
+                return !(startLine <= sel.endLine && endLine >= sel.startLine);
             });
 
-            // If no selections remain for this file, remove it from JSON
             if (selectionsJSON[filePath].length === 0) {
                 delete selectionsJSON[filePath];
             }
 
             saveSelectionsToFile();
             updateHighlights(editor);
-            selectionProvider.refresh();  // Refresh the tree view
         }
     });
 
-    // Command: Unselect all ranges in the file
     let unselectAllCommand = vscode.commands.registerCommand('extension.unselectAll', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
@@ -105,14 +111,12 @@ function activate(context) {
         const filePath = editor.document.fileName;
 
         if (selectionsJSON[filePath]) {
-            delete selectionsJSON[filePath];  // Remove all selections for the file
+            delete selectionsJSON[filePath];
             saveSelectionsToFile();
             updateHighlights(editor);
-            selectionProvider.refresh();  // Refresh the tree view
         }
     });
 
-    // Command: Copy selected text in top-to-bottom order
     let copySelectedTextCommand = vscode.commands.registerCommand('extension.copySelectedText', () => {
         let selectedText = '';
         Object.keys(selectionsJSON).forEach(filePath => {
@@ -120,7 +124,6 @@ function activate(context) {
             const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
 
             if (editor) {
-                // Sort selections by their start line number to ensure top-to-bottom copying
                 selections.sort((a, b) => a.startLine - b.startLine);
 
                 selections.forEach(sel => {
@@ -146,13 +149,11 @@ function activate(context) {
         }
     });
 
-    // Register all commands
     context.subscriptions.push(selectRangeCommand);
     context.subscriptions.push(unselectRangeCommand);
     context.subscriptions.push(unselectAllCommand);
     context.subscriptions.push(copySelectedTextCommand);
 
-    // Tree view for Selection Explorer
     let selectionProvider = new SelectionProvider();
     vscode.window.registerTreeDataProvider('selectionView', selectionProvider);
 
@@ -162,7 +163,6 @@ function activate(context) {
         });
     });
 
-    // Command to unselect all selections for a specific file via context menu
     let unselectFileCommand = vscode.commands.registerCommand('extension.unselectFile', (filePath) => {
         if (selectionsJSON[filePath]) {
             delete selectionsJSON[filePath];
@@ -177,9 +177,8 @@ function activate(context) {
     });
 
     let deleteFileSelectionCommand = vscode.commands.registerCommand('extension.deleteFileSelection', (file) => {
-        const filePath = file.filePath;  // Extract the filePath from the passed object
+        const filePath = file.filePath;
     
-        console.log('Deleting selections for:', filePath);
         if (selectionsJSON[filePath]) {
             delete selectionsJSON[filePath];
             saveSelectionsToFile();
@@ -188,9 +187,6 @@ function activate(context) {
             const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
             if (editor) {
                 updateHighlights(editor);
-                console.log('Selections and highlights removed for:', filePath);
-            } else {
-                console.log('Selections removed but file not open in editor:', filePath);
             }
     
             vscode.window.showInformationMessage(`Selections cleared for file: ${filePath}`);
@@ -206,7 +202,6 @@ function activate(context) {
 
 function deactivate() {}
 
-// Tree Data Provider for Selection Explorer
 class SelectionProvider {
     constructor() {
         this._onDidChangeTreeData = new vscode.EventEmitter();
@@ -216,7 +211,6 @@ class SelectionProvider {
     getChildren(element) {
         if (!element) {
             return Object.keys(selectionsJSON).map(file => {
-                // Use relative paths instead of full paths
                 const relativePath = vscode.workspace.asRelativePath(file);
                 return {
                     label: relativePath,
@@ -232,7 +226,7 @@ class SelectionProvider {
         const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
 
         if (element.type === 'file') {
-            treeItem.contextValue = 'file';
+            treeItem.contextValue = 'file';  // Set context value for the context menu
             treeItem.command = {
                 command: 'extension.openFile',
                 title: "Open File",
@@ -248,31 +242,19 @@ class SelectionProvider {
     }
 }
 
-module.exports = {
-    activate,
-    deactivate
-};
-
-// Document change tracking
 vscode.workspace.onDidChangeTextDocument((event) => {
     const filePath = event.document.fileName;
 
     if (!selectionsJSON[filePath]) {
-        return; // No selections for this file, so nothing to update
+        return;
     }
-
-    console.log('Document change detected'); // Debugging
 
     event.contentChanges.forEach(change => {
         const startLine = change.range.start.line;
         const endLine = change.range.end.line;
         const lineDelta = change.text.split('\n').length - (endLine - startLine + 1);
 
-        console.log(`Line change detected: start=${startLine}, end=${endLine}, delta=${lineDelta}`); // Debugging
-
-        // Adjust the selection ranges and update the content
         selectionsJSON[filePath] = selectionsJSON[filePath].map(selection => {
-            // Shift selections if change happens before or inside the selection
             if (selection.startLine > endLine) {
                 selection.startLine += lineDelta;
                 selection.endLine += lineDelta;
@@ -283,30 +265,26 @@ vscode.workspace.onDidChangeTextDocument((event) => {
                 selection.endLine = Math.max(selection.startLine, selection.endLine + lineDelta);
             }
 
-            // Update the content of the selection
             const selectedText = event.document.getText(new vscode.Range(selection.startLine, 0, selection.endLine, 9999));
             selection.content = selectedText;
-
-            console.log(`Selection updated: start=${selection.startLine}, end=${selection.endLine}, content=${selection.content}`); // Debugging
 
             return selection;
         });
 
-        // Ensure that the updated selections are written to the JSON file
         try {
-            console.log('Attempting to write to JSON file...'); // Debugging
-            saveSelectionsToFile(); // Call the function to save to the file
-            console.log('JSON file updated after document change'); // Confirm file write success
+            saveSelectionsToFile();
         } catch (error) {
-            console.error(`Error writing JSON file: ${error.message}`); // Debugging for write failure
+            console.error(`Error writing JSON file: ${error.message}`);
         }
 
-        // Refresh highlights in the editor
         const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
         if (editor) {
             updateHighlights(editor);
         }
-
-        console.log('Selections and highlights updated after document change'); // Debugging
     });
 });
+
+module.exports = {
+    activate,
+    deactivate
+};
