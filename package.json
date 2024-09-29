@@ -9,7 +9,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
     "commands": [
@@ -24,6 +23,10 @@
       {
         "command": "extension.copySelectedText",
         "title": "Copy Selected Text"
+      },
+      {
+        "command": "extension.unselectAll",
+        "title": "Unselect All"
       }
     ],
     "keybindings": [
@@ -33,13 +36,18 @@
         "when": "editorTextFocus"
       },
       {
-        "command": "extension.unselectAll",
-        "key": "ctrl+shift+a",
+        "command": "extension.unselectRange",
+        "key": "ctrl+shift+u",
         "when": "editorTextFocus"
       },
       {
         "command": "extension.copySelectedText",
         "key": "ctrl+shift+c",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.unselectAll",
+        "key": "ctrl+shift+a",
         "when": "editorTextFocus"
       }
     ]
