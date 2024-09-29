@@ -22,7 +22,7 @@ function activate(context) {
     const refreshMenu = () => {
         selectionProvider.refresh();
     };
-    
+
     if (fs.existsSync(jsonFilePath)) {
         const fileData = fs.readFileSync(jsonFilePath, 'utf8');
         selectionsJSON = JSON.parse(fileData);
@@ -47,6 +47,14 @@ function activate(context) {
         });
 
         editor.setDecorations(highlightDecorationType, decorationsArray);
+    };
+
+    const updateAllEditorsWithFile = (filePath) => {
+        vscode.window.visibleTextEditors.forEach(editor => {
+            if (editor.document.fileName === filePath) {
+                updateHighlights(editor);
+            }
+        });
     };
 
     vscode.window.visibleTextEditors.forEach(editor => {
@@ -90,7 +98,7 @@ function activate(context) {
         selectionsJSON[filePath].push({ startLine, endLine, content: selectedText });
         saveSelectionsToFile();
         refreshMenu();
-        updateHighlights(editor);
+        updateAllEditorsWithFile(filePath);  // Update all editors with the same file
     });
 
     let unselectRangeCommand = vscode.commands.registerCommand('extension.unselectRange', () => {
@@ -112,7 +120,7 @@ function activate(context) {
 
             saveSelectionsToFile();
             refreshMenu();
-            updateHighlights(editor);
+            updateAllEditorsWithFile(filePath);  // Update all editors with the same file
         }
     });
 
@@ -126,7 +134,7 @@ function activate(context) {
             delete selectionsJSON[filePath];
             saveSelectionsToFile();
             refreshMenu();
-            updateHighlights(editor);
+            updateAllEditorsWithFile(filePath);  // Update all editors with the same file
         }
     });
 
@@ -180,11 +188,7 @@ function activate(context) {
             delete selectionsJSON[filePath];
             saveSelectionsToFile();
             refreshMenu();
-
-            const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
-            if (editor) {
-                updateHighlights(editor);
-            }
+            updateAllEditorsWithFile(filePath);  // Update all editors with the same file
         }
     });
 
@@ -195,11 +199,7 @@ function activate(context) {
             delete selectionsJSON[filePath];
             saveSelectionsToFile();
             refreshMenu();
-    
-            const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
-            if (editor) {
-                updateHighlights(editor);
-            }
+            updateAllEditorsWithFile(filePath);  // Update all editors with the same file
     
             vscode.window.showInformationMessage(`Selections cleared for file: ${filePath}`);
         } else {
@@ -296,10 +296,7 @@ vscode.workspace.onDidChangeTextDocument((event) => {
             console.error(`Error writing JSON file: ${error.message}`);
         }
 
-        const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
-        if (editor) {
-            updateHighlights(editor);
-        }
+        updateAllEditorsWithFile(filePath);  // Update all editors with the same file
     });
 });
 
