@@ -5,6 +5,15 @@ const path = require('path');
 let selectionsJSON = {};
 const jsonFilePath = path.join(__dirname, 'selections.json');
 
+const saveSelectionsToFile = () => {
+    try {
+        fs.writeFileSync(jsonFilePath, JSON.stringify(selectionsJSON, null, 2), 'utf8');
+        console.log(`JSON file updated at path: ${jsonFilePath}`);
+    } catch (error) {
+        console.error(`Failed to write JSON file: ${error.message}`);
+    }
+};
+
 function activate(context) {
     if (fs.existsSync(jsonFilePath)) {
         const fileData = fs.readFileSync(jsonFilePath, 'utf8');
@@ -15,10 +24,6 @@ function activate(context) {
     let highlightDecorationType = vscode.window.createTextEditorDecorationType({
         backgroundColor: 'rgba(255,165,0,0.5)'
     });
-
-    const saveSelectionsToFile = () => {
-        fs.writeFileSync(jsonFilePath, JSON.stringify(selectionsJSON, null, 2), 'utf8');
-    };
 
     const updateHighlights = (editor) => {
         const filePath = editor.document.fileName;
@@ -36,7 +41,6 @@ function activate(context) {
         editor.setDecorations(highlightDecorationType, decorationsArray);
     };
 
-    // Command: Select a range
     let selectRangeCommand = vscode.commands.registerCommand('extension.selectRange', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
@@ -44,6 +48,7 @@ function activate(context) {
         const startLine = editor.selection.start.line;
         const endLine = editor.selection.end.line;
         const filePath = editor.document.fileName;
+        const selectedText = editor.document.getText(new vscode.Range(startLine, 0, endLine, 9999));
 
         const overlapsExistingSelection = selectionsJSON[filePath]?.some(sel => {
             return (startLine >= sel.startLine && startLine <= sel.endLine) ||
@@ -60,7 +65,7 @@ function activate(context) {
             selectionsJSON[filePath] = [];
         }
 
-        selectionsJSON[filePath].push({ startLine, endLine });
+        selectionsJSON[filePath].push({ startLine, endLine, content: selectedText });
         saveSelectionsToFile();
         updateHighlights(editor);
         selectionProvider.refresh();  // Refresh the tree view
@@ -193,7 +198,6 @@ function activate(context) {
             vscode.window.showInformationMessage(`No selections found for file: ${filePath}`);
         }
     });
-    
 
     context.subscriptions.push(openFileCommand);
     context.subscriptions.push(unselectFileCommand);
@@ -249,6 +253,7 @@ module.exports = {
     deactivate
 };
 
+// Document change tracking
 vscode.workspace.onDidChangeTextDocument((event) => {
     const filePath = event.document.fileName;
 
@@ -256,37 +261,52 @@ vscode.workspace.onDidChangeTextDocument((event) => {
         return; // No selections for this file, so nothing to update
     }
 
-    // Update selection ranges and content based on document changes
+    console.log('Document change detected'); // Debugging
+
     event.contentChanges.forEach(change => {
         const startLine = change.range.start.line;
         const endLine = change.range.end.line;
         const lineDelta = change.text.split('\n').length - (endLine - startLine + 1);
 
+        console.log(`Line change detected: start=${startLine}, end=${endLine}, delta=${lineDelta}`); // Debugging
+
         // Adjust the selection ranges and update the content
         selectionsJSON[filePath] = selectionsJSON[filePath].map(selection => {
-            // Shift ranges if they are after the change
+            // Shift selections if change happens before or inside the selection
             if (selection.startLine > endLine) {
                 selection.startLine += lineDelta;
                 selection.endLine += lineDelta;
-            }
-
-            // Adjust the end line if the change occurs within the selection
-            if (selection.endLine >= startLine) {
-                selection.endLine += lineDelta;
+            } else if (selection.endLine >= startLine) {
+                if (startLine <= selection.startLine) {
+                    selection.startLine = Math.max(0, selection.startLine + lineDelta);
+                }
+                selection.endLine = Math.max(selection.startLine, selection.endLine + lineDelta);
             }
 
             // Update the content of the selection
             const selectedText = event.document.getText(new vscode.Range(selection.startLine, 0, selection.endLine, 9999));
             selection.content = selectedText;
 
+            console.log(`Selection updated: start=${selection.startLine}, end=${selection.endLine}, content=${selection.content}`); // Debugging
+
             return selection;
         });
-    });
 
-    // Save updated selections to file and refresh the highlights
-    saveSelectionsToFile();
-    const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
-    if (editor) {
-        updateHighlights(editor);
-    }
+        // Ensure that the updated selections are written to the JSON file
+        try {
+            console.log('Attempting to write to JSON file...'); // Debugging
+            saveSelectionsToFile(); // Call the function to save to the file
+            console.log('JSON file updated after document change'); // Confirm file write success
+        } catch (error) {
+            console.error(`Error writing JSON file: ${error.message}`); // Debugging for write failure
+        }
+
+        // Refresh highlights in the editor
+        const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
+        if (editor) {
+            updateHighlights(editor);
+        }
+
+        console.log('Selections and highlights updated after document change'); // Debugging
+    });
 });
