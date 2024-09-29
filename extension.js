@@ -256,29 +256,28 @@ vscode.workspace.onDidChangeTextDocument((event) => {
         return; // No selections for this file, so nothing to update
     }
 
-    // Iterate through the changes in the document
+    // Update selection ranges and content based on document changes
     event.contentChanges.forEach(change => {
         const startLine = change.range.start.line;
         const endLine = change.range.end.line;
         const lineDelta = change.text.split('\n').length - (endLine - startLine + 1);
 
-        // Update selections if there is a line number change
+        // Adjust the selection ranges and update the content
         selectionsJSON[filePath] = selectionsJSON[filePath].map(selection => {
-            // If selection is after the change, shift it by the delta
+            // Shift ranges if they are after the change
             if (selection.startLine > endLine) {
-                return {
-                    startLine: selection.startLine + lineDelta,
-                    endLine: selection.endLine + lineDelta
-                };
+                selection.startLine += lineDelta;
+                selection.endLine += lineDelta;
             }
 
-            // If the selection overlaps with the change, adjust its boundaries
+            // Adjust the end line if the change occurs within the selection
             if (selection.endLine >= startLine) {
-                return {
-                    startLine: selection.startLine,
-                    endLine: selection.endLine + lineDelta
-                };
+                selection.endLine += lineDelta;
             }
+
+            // Update the content of the selection
+            const selectedText = event.document.getText(new vscode.Range(selection.startLine, 0, selection.endLine, 9999));
+            selection.content = selectedText;
 
             return selection;
         });

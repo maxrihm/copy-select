@@ -1,1 +1,9 @@
-{}
+{
+  "c:\\Users\\morge\\Desktop\\Projects\\Python\\notionWordsToCsv\\translate words in () from English to Ru.txt": [
+    {
+      "startLine": 4,
+      "endLine": 8,
+      "content": "so again: I want you to make a table\r\ncolumn A - this English word\r\ncolumn B - explanation of English of the word in column A. Make it not short\r\ncolumn C - Russian translation of the word in column A in the context of column D\r\ncolumn D - context English"
+    }
+  ]
+}
