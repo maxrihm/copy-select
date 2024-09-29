@@ -50,7 +50,24 @@
         "key": "ctrl+shift+a",
         "when": "editorTextFocus"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "selectionExplorer",
+          "title": "Selection Explorer",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "selectionExplorer": [
+        {
+          "id": "selectionView",
+          "name": "Selected Files"
+        }
+      ]
+    }
   },
   "scripts": {
     "lint": "eslint .",

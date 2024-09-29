@@ -11,7 +11,7 @@ function activate(context) {
         selectionsJSON = JSON.parse(fileData);
     }
 
-    // Update the color to orange
+    // Decoration for highlighted range (color: orange)
     let highlightDecorationType = vscode.window.createTextEditorDecorationType({
         backgroundColor: 'rgba(255,165,0,0.5)'
     });
@@ -33,12 +33,7 @@ function activate(context) {
         editor.setDecorations(highlightDecorationType, decorationsArray);
     };
 
-    const findSelectionIndex = (filePath, startLine, endLine) => {
-        if (!selectionsJSON[filePath]) return -1;
-
-        return selectionsJSON[filePath].findIndex(sel => sel.startLine === startLine && sel.endLine === endLine);
-    };
-
+    // Command: Select a range
     let selectRangeCommand = vscode.commands.registerCommand('extension.selectRange', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
@@ -47,22 +42,27 @@ function activate(context) {
         const endLine = editor.selection.end.line;
         const filePath = editor.document.fileName;
 
-        // Check if the range is already selected (highlighted)
-        const selectionIndex = findSelectionIndex(filePath, startLine, endLine);
-        if (selectionIndex !== -1) {
-            // If it's already selected, remove it
-            selectionsJSON[filePath].splice(selectionIndex, 1);
-        } else {
-            if (!selectionsJSON[filePath]) {
-                selectionsJSON[filePath] = [];
-            }
-            selectionsJSON[filePath].push({ startLine, endLine });
+        const overlapsExistingSelection = selectionsJSON[filePath]?.some(sel => {
+            return (startLine >= sel.startLine && startLine <= sel.endLine) ||
+                   (endLine >= sel.startLine && endLine <= sel.endLine) ||
+                   (startLine <= sel.startLine && endLine >= sel.endLine);
+        });
+
+        if (overlapsExistingSelection) {
+            vscode.window.showInformationMessage("This range or part of it is already selected.");
+            return;
         }
 
+        if (!selectionsJSON[filePath]) {
+            selectionsJSON[filePath] = [];
+        }
+
+        selectionsJSON[filePath].push({ startLine, endLine });
         saveSelectionsToFile();
         updateHighlights(editor);
     });
 
+    // Command: Unselect a range
     let unselectRangeCommand = vscode.commands.registerCommand('extension.unselectRange', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
@@ -72,7 +72,6 @@ function activate(context) {
         const filePath = editor.document.fileName;
 
         if (selectionsJSON[filePath]) {
-            // Unselect all ranges that overlap with the current selection or unselect everything if the current selection is Ctrl+A (Select All)
             selectionsJSON[filePath] = selectionsJSON[filePath].filter(sel => {
                 return !(sel.startLine >= startLine && sel.endLine <= endLine);
             });
@@ -82,13 +81,13 @@ function activate(context) {
         }
     });
 
+    // Command: Unselect all ranges in the file
     let unselectAllCommand = vscode.commands.registerCommand('extension.unselectAll', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
 
         const filePath = editor.document.fileName;
 
-        // Remove all selections from the current file
         if (selectionsJSON[filePath]) {
             selectionsJSON[filePath] = [];
             saveSelectionsToFile();
@@ -96,6 +95,7 @@ function activate(context) {
         }
     });
 
+    // Command: Copy selected text
     let copySelectedTextCommand = vscode.commands.registerCommand('extension.copySelectedText', () => {
         let selectedText = '';
         Object.keys(selectionsJSON).forEach(filePath => {
@@ -126,6 +126,7 @@ function activate(context) {
         }
     });
 
+    // Register all commands
     context.subscriptions.push(selectRangeCommand);
     context.subscriptions.push(unselectRangeCommand);
     context.subscriptions.push(unselectAllCommand);
