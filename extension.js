@@ -60,6 +60,7 @@ function activate(context) {
         selectionsJSON[filePath].push({ startLine, endLine });
         saveSelectionsToFile();
         updateHighlights(editor);
+        selectionProvider.refresh();  // Refresh the tree view
     });
 
     // Command: Unselect a range
@@ -78,6 +79,7 @@ function activate(context) {
 
             saveSelectionsToFile();
             updateHighlights(editor);
+            selectionProvider.refresh();  // Refresh the tree view
         }
     });
 
@@ -92,6 +94,7 @@ function activate(context) {
             selectionsJSON[filePath] = [];
             saveSelectionsToFile();
             updateHighlights(editor);
+            selectionProvider.refresh();  // Refresh the tree view
         }
     });
 
@@ -131,9 +134,86 @@ function activate(context) {
     context.subscriptions.push(unselectRangeCommand);
     context.subscriptions.push(unselectAllCommand);
     context.subscriptions.push(copySelectedTextCommand);
+
+    // Tree view for Selection Explorer
+    let selectionProvider = new SelectionProvider();
+    vscode.window.registerTreeDataProvider('selectionView', selectionProvider);
+
+    let openFileCommand = vscode.commands.registerCommand('extension.openFile', (filePath) => {
+        vscode.workspace.openTextDocument(filePath).then(doc => {
+            vscode.window.showTextDocument(doc);
+        });
+    });
+
+    let unselectFileCommand = vscode.commands.registerCommand('extension.unselectFile', (filePath) => {
+        if (selectionsJSON[filePath]) {
+            selectionsJSON[filePath] = [];
+            saveSelectionsToFile();
+            selectionProvider.refresh();
+
+            const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
+            if (editor) {
+                updateHighlights(editor);
+            }
+        }
+    });
+
+    let deleteFileSelectionCommand = vscode.commands.registerCommand('extension.deleteFileSelection', (filePath) => {
+        delete selectionsJSON[filePath];
+        saveSelectionsToFile();
+        selectionProvider.refresh();
+
+        const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
+        if (editor) {
+            updateHighlights(editor);
+        }
+    });
+
+    context.subscriptions.push(openFileCommand);
+    context.subscriptions.push(unselectFileCommand);
+    context.subscriptions.push(deleteFileSelectionCommand);
 }
 
 function deactivate() {}
+
+// Tree Data Provider for Selection Explorer
+class SelectionProvider {
+    constructor() {
+        this._onDidChangeTreeData = new vscode.EventEmitter();
+        this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    }
+
+    getChildren(element) {
+        if (!element) {
+            return Object.keys(selectionsJSON).map(file => {
+                return {
+                    label: file,
+                    type: 'file'
+                };
+            });
+        }
+        return [];
+    }
+
+    getTreeItem(element) {
+        const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
+
+        if (element.type === 'file') {
+            treeItem.contextValue = 'file';
+            treeItem.command = {
+                command: 'extension.openFile',
+                title: "Open File",
+                arguments: [element.label]
+            };
+        }
+
+        return treeItem;
+    }
+
+    refresh() {
+        this._onDidChangeTreeData.fire();
+    }
+}
 
 module.exports = {
     activate,
