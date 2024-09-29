@@ -23,7 +23,10 @@ function activate(context) {
     const updateHighlights = (editor) => {
         const filePath = editor.document.fileName;
         const selections = selectionsJSON[filePath];
-        if (!selections) return;
+        if (!selections || selections.length === 0) {
+            editor.setDecorations(highlightDecorationType, []); // Clear decorations
+            return;
+        }
 
         const decorationsArray = selections.map(sel => {
             const range = new vscode.Range(sel.startLine, 0, sel.endLine, 9999);
@@ -78,6 +81,11 @@ function activate(context) {
                 return !(startLine <= sel.endLine && endLine >= sel.startLine); // Remove if overlapping
             });
 
+            // If no selections remain for this file, remove it from JSON
+            if (selectionsJSON[filePath].length === 0) {
+                delete selectionsJSON[filePath];
+            }
+
             saveSelectionsToFile();
             updateHighlights(editor);
             selectionProvider.refresh();  // Refresh the tree view
@@ -92,7 +100,7 @@ function activate(context) {
         const filePath = editor.document.fileName;
 
         if (selectionsJSON[filePath]) {
-            selectionsJSON[filePath] = [];
+            delete selectionsJSON[filePath];  // Remove all selections for the file
             saveSelectionsToFile();
             updateHighlights(editor);
             selectionProvider.refresh();  // Refresh the tree view
@@ -149,9 +157,10 @@ function activate(context) {
         });
     });
 
+    // Command to unselect all selections for a specific file via context menu
     let unselectFileCommand = vscode.commands.registerCommand('extension.unselectFile', (filePath) => {
         if (selectionsJSON[filePath]) {
-            selectionsJSON[filePath] = [];
+            delete selectionsJSON[filePath];
             saveSelectionsToFile();
             selectionProvider.refresh();
 
@@ -162,16 +171,29 @@ function activate(context) {
         }
     });
 
-    let deleteFileSelectionCommand = vscode.commands.registerCommand('extension.deleteFileSelection', (filePath) => {
-        delete selectionsJSON[filePath];
-        saveSelectionsToFile();
-        selectionProvider.refresh();
-
-        const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
-        if (editor) {
-            updateHighlights(editor);
+    let deleteFileSelectionCommand = vscode.commands.registerCommand('extension.deleteFileSelection', (file) => {
+        const filePath = file.filePath;  // Extract the filePath from the passed object
+    
+        console.log('Deleting selections for:', filePath);
+        if (selectionsJSON[filePath]) {
+            delete selectionsJSON[filePath];
+            saveSelectionsToFile();
+            selectionProvider.refresh();
+    
+            const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
+            if (editor) {
+                updateHighlights(editor);
+                console.log('Selections and highlights removed for:', filePath);
+            } else {
+                console.log('Selections removed but file not open in editor:', filePath);
+            }
+    
+            vscode.window.showInformationMessage(`Selections cleared for file: ${filePath}`);
+        } else {
+            vscode.window.showInformationMessage(`No selections found for file: ${filePath}`);
         }
     });
+    
 
     context.subscriptions.push(openFileCommand);
     context.subscriptions.push(unselectFileCommand);
