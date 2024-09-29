@@ -7,6 +7,9 @@ const jsonFilePath = path.join(__dirname, 'selections.json');
 
 const saveSelectionsToFile = () => {
     try {
+        Object.keys(selectionsJSON).forEach(filePath => {
+            selectionsJSON[filePath].sort((a, b) => a.startLine - b.startLine);
+        });
         fs.writeFileSync(jsonFilePath, JSON.stringify(selectionsJSON, null, 2), 'utf8');
     } catch (error) {
         console.error(`Failed to write JSON file: ${error.message}`);
@@ -14,9 +17,16 @@ const saveSelectionsToFile = () => {
 };
 
 function activate(context) {
+    const selectionProvider = new SelectionProvider();
+    
+    const refreshMenu = () => {
+        selectionProvider.refresh();
+    };
+    
     if (fs.existsSync(jsonFilePath)) {
         const fileData = fs.readFileSync(jsonFilePath, 'utf8');
         selectionsJSON = JSON.parse(fileData);
+        refreshMenu();
     }
 
     let highlightDecorationType = vscode.window.createTextEditorDecorationType({
@@ -79,6 +89,7 @@ function activate(context) {
 
         selectionsJSON[filePath].push({ startLine, endLine, content: selectedText });
         saveSelectionsToFile();
+        refreshMenu();
         updateHighlights(editor);
     });
 
@@ -100,6 +111,7 @@ function activate(context) {
             }
 
             saveSelectionsToFile();
+            refreshMenu();
             updateHighlights(editor);
         }
     });
@@ -113,6 +125,7 @@ function activate(context) {
         if (selectionsJSON[filePath]) {
             delete selectionsJSON[filePath];
             saveSelectionsToFile();
+            refreshMenu();
             updateHighlights(editor);
         }
     });
@@ -154,7 +167,6 @@ function activate(context) {
     context.subscriptions.push(unselectAllCommand);
     context.subscriptions.push(copySelectedTextCommand);
 
-    let selectionProvider = new SelectionProvider();
     vscode.window.registerTreeDataProvider('selectionView', selectionProvider);
 
     let openFileCommand = vscode.commands.registerCommand('extension.openFile', (filePath) => {
@@ -167,7 +179,7 @@ function activate(context) {
         if (selectionsJSON[filePath]) {
             delete selectionsJSON[filePath];
             saveSelectionsToFile();
-            selectionProvider.refresh();
+            refreshMenu();
 
             const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
             if (editor) {
@@ -182,7 +194,7 @@ function activate(context) {
         if (selectionsJSON[filePath]) {
             delete selectionsJSON[filePath];
             saveSelectionsToFile();
-            selectionProvider.refresh();
+            refreshMenu();
     
             const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
             if (editor) {
@@ -198,6 +210,12 @@ function activate(context) {
     context.subscriptions.push(openFileCommand);
     context.subscriptions.push(unselectFileCommand);
     context.subscriptions.push(deleteFileSelectionCommand);
+
+    let debugFilePathCommand = vscode.commands.registerCommand('extension.debugFilePath', (file) => {
+        const filePath = file.filePath;
+        vscode.window.showInformationMessage(`Debug: filePath is ${filePath}`);
+    });
+    context.subscriptions.push(debugFilePathCommand);
 }
 
 function deactivate() {}
@@ -226,12 +244,13 @@ class SelectionProvider {
         const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
 
         if (element.type === 'file') {
-            treeItem.contextValue = 'file';  // Set context value for the context menu
+            treeItem.contextValue = 'file';
             treeItem.command = {
                 command: 'extension.openFile',
                 title: "Open File",
                 arguments: [element.filePath]
             };
+            treeItem.resourceUri = vscode.Uri.file(element.filePath);
         }
 
         return treeItem;
