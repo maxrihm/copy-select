@@ -63,7 +63,7 @@ function activate(context) {
         selectionProvider.refresh();  // Refresh the tree view
     });
 
-    // Command: Unselect a range
+    // Command: Unselect a range (even if partially selected)
     let unselectRangeCommand = vscode.commands.registerCommand('extension.unselectRange', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
@@ -73,8 +73,9 @@ function activate(context) {
         const filePath = editor.document.fileName;
 
         if (selectionsJSON[filePath]) {
+            // Unselect the entire range if the current selection overlaps with any existing range
             selectionsJSON[filePath] = selectionsJSON[filePath].filter(sel => {
-                return !(sel.startLine >= startLine && sel.endLine <= endLine);
+                return !(startLine <= sel.endLine && endLine >= sel.startLine); // Remove if overlapping
             });
 
             saveSelectionsToFile();
@@ -98,7 +99,7 @@ function activate(context) {
         }
     });
 
-    // Command: Copy selected text
+    // Command: Copy selected text in top-to-bottom order
     let copySelectedTextCommand = vscode.commands.registerCommand('extension.copySelectedText', () => {
         let selectedText = '';
         Object.keys(selectionsJSON).forEach(filePath => {
@@ -106,6 +107,9 @@ function activate(context) {
             const editor = vscode.window.visibleTextEditors.find(e => e.document.fileName === filePath);
 
             if (editor) {
+                // Sort selections by their start line number to ensure top-to-bottom copying
+                selections.sort((a, b) => a.startLine - b.startLine);
+
                 selections.forEach(sel => {
                     const text = editor.document.getText(new vscode.Range(sel.startLine, 0, sel.endLine, 9999));
                     selectedText += text + '\n';
@@ -186,8 +190,11 @@ class SelectionProvider {
     getChildren(element) {
         if (!element) {
             return Object.keys(selectionsJSON).map(file => {
+                // Use relative paths instead of full paths
+                const relativePath = vscode.workspace.asRelativePath(file);
                 return {
-                    label: file,
+                    label: relativePath,
+                    filePath: file,
                     type: 'file'
                 };
             });
@@ -203,7 +210,7 @@ class SelectionProvider {
             treeItem.command = {
                 command: 'extension.openFile',
                 title: "Open File",
-                arguments: [element.label]
+                arguments: [element.filePath]
             };
         }
 
