@@ -1,65 +1,27 @@
-# copy-select README
+# Copy Select Extension
 
-This is the README for your extension "copy-select". After writing up a brief description, we recommend including the following sections.
+This extension allows you to manage and manipulate text selections within VS Code. It provides the following commands:
 
-## Features
+## Commands
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Select Range (Ctrl+Shift+S):** Select a range of lines in the current file.
+- **Unselect Range (Ctrl+Shift+U):** Unselect a previously selected range.
+- **Copy Selected Text (Ctrl+Shift+C):** Copy all selected ranges in the current file.
+- **Unselect All (Ctrl+Shift+A):** Unselect all selected ranges in the current file.
+- **Open File:** Open a file from the selection explorer.
+- **Delete Selections in This File:** Delete all selections for the currently open file.
 
-For example if there is an image subfolder under your extension project workspace:
+## Keybindings
 
-\!\[feature X\]\(images/feature-x.png\)
+The extension provides the following default keybindings:
+- **Ctrl+Shift+S:** Select a range.
+- **Ctrl+Shift+U:** Unselect a range.
+- **Ctrl+Shift+C:** Copy selected text.
+- **Ctrl+Shift+A:** Unselect all ranges.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## How to Use
 
-## Requirements
+1. Open a file and use the keybindings or the command palette to interact with text selections.
+2. View and manage selections using the "Selection Explorer" in the activity bar.
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+This extension is in its early stages and will continue to be improved with more features and bug fixes.

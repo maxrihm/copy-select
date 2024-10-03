@@ -10,6 +10,14 @@
     "Other"
   ],
   "main": "./extension.js",
+  "activationEvents": [
+    "onCommand:extension.selectRange",
+    "onCommand:extension.unselectRange",
+    "onCommand:extension.copySelectedText",
+    "onCommand:extension.unselectAll",
+    "onCommand:extension.openFile",
+    "onCommand:extension.deleteFileSelection"
+  ],
   "contributes": {
     "commands": [
       {
@@ -92,7 +100,8 @@
   "scripts": {
     "lint": "eslint .",
     "pretest": "npm run lint",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "build-and-install": "node auto-package-install.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.93.0",
