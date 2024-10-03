@@ -19,9 +19,26 @@ The extension provides the following default keybindings:
 - **Ctrl+Shift+C:** Copy selected text.
 - **Ctrl+Shift+A:** Unselect all ranges.
 
-## How to Use
+## Packaging and Installing the Extension
 
-1. Open a file and use the keybindings or the command palette to interact with text selections.
-2. View and manage selections using the "Selection Explorer" in the activity bar.
+To automate the process of packaging, installing, and reloading the extension after making changes, follow these steps:
 
-This extension is in its early stages and will continue to be improved with more features and bug fixes.
+### Option 1: Using the Command Palette
+
+1. Press `Ctrl+Shift+P` to open the **Command Palette**.
+2. Type `"Tasks: Run Task"` and select it.
+3. From the list of tasks, choose `"Package and Install Extension"`.
+4. The task will package the extension, install it, and reload VS Code automatically.
+
+### Option 2: Using a Custom Keybinding (Optional)
+
+1. You can bind the task to a custom key for even quicker access. Here's how to do it:
+   - Open your `keybindings.json` by pressing `Ctrl+Shift+P` and typing `"Preferences: Open Keyboard Shortcuts (JSON)"`.
+   - Add the following configuration:
+
+   ```json
+   {
+     "key": "ctrl+alt+p",  // or any keybinding you prefer
+     "command": "workbench.action.tasks.runTask",
+     "args": "Package and Install Extension"
+   }
